@@ -40,17 +40,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("✨ AI TIMES")
-st.caption("ヤフー完全排除。世界の一流国際放送とGoogleニュースで創る最強の多様性")
+st.caption("ヤフー完全排除。Googleニュースが厳選する日本と世界の多角的な視点")
 
-# 📊 ニュースソース：死んでいるロイターを排除し、100%確実に動く世界最高峰の国際メディアへ変更
+# 📊 ニュースソース：並び順を元に戻し、死なない公式URLだけで再構築
 NEWS_SOURCES = {
-    "🌍 世界の動き(海外一流紙)": [
-        {"name": "BBCニュース (英国)", "url": "https://www.bbc.com/japanese/index.xml"},
-        {"name": "CNN.co.jp (米国)", "url": "https://pubsubhubbub.appspot.com/feed/https://www.cnn.co.jp/rss/cnn/index.rdf"},
-        {"name": "AFP通信 (フランス)", "url": "https://pubsubhubbub.appspot.com/feed/https://www.afpbb.com/xml/afpbb_rss.xml"}
-    ],
     "🇯🇵 国内(Googleニュース)": [
         {"name": "Google主要", "url": "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja"}
+    ],
+    "🌍 世界の動き": [
+        # ★エラー原因だった中継URLを全廃し、絶対に弾かれないGoogleの国際ニュースRSSに一本化
+        {"name": "Google国際", "url": "https://news.google.com/rss/headlines/section/topic/WORLD?hl=ja&gl=JP&ceid=JP:ja"}
     ],
     "🤖 AI・最先端テック": [
         {"name": "Google IT科学", "url": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=ja&gl=JP&ceid=JP:ja"},
@@ -69,7 +68,7 @@ def fetch_and_display_category(sources, category_index):
     
     for source in sources:
         try:
-            # 完璧なブラウザ偽装でブロックを完全回避
+            # 標準のブラウザ偽装で直接クリーンに取得
             req = urllib.request.Request(
                 source["url"], 
                 headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
@@ -85,7 +84,7 @@ def fetch_and_display_category(sources, category_index):
                     display_title = entry.title
                     source_name = source["name"]
                     
-                    # Googleニュースの「メディア名」を自動抽出してバッジにする
+                    # Googleニュースのタイトルから発信元の新聞社・メディア名を自動抽出
                     if " - " in display_title and "Google" in source["name"]:
                         parts = display_title.split(" - ")
                         source_name = f"📰 {parts[-1]}"
@@ -95,7 +94,6 @@ def fetch_and_display_category(sources, category_index):
                     entry["source_name"] = source_name
                     all_entries.append(entry)
         except Exception:
-            # エラーが出たメディアは一瞬で切り捨て、他の動くメディアを絶対に巻き添えにしない
             continue
                 
     if not all_entries:
