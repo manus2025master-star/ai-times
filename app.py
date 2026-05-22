@@ -1,6 +1,6 @@
 import streamlit as st
 import feedparser
-import urllib.parse
+import urllib.request
 
 # スマホの画面設定
 st.set_page_config(page_title="AI TIMES", page_icon="✨", layout="centered")
@@ -40,27 +40,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("✨ AI TIMES")
-st.caption("ヤフー完全排除。Googleニュースと世界の一流紙で創る圧倒的多様性")
+st.caption("Googleニュース＆世界の一流紙をエラーなしで完全網羅")
 
-# 🌍 ニュースソース：ヤフーを一切使わず、Googleと世界の一流通信社で構成！
-# クラウドでのブロック対策として、Google経由の特殊なURLに変換して読み込みます
+# 📊 ニュースソース：ヤフー完全排除、Googleと世界の一流通信社で固定
 NEWS_SOURCES = {
     "🇯🇵 国内(Googleニュース)": [
-        {"name": "Google 主要ニュース", "url": "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja"},
-        {"name": "NHK 社会ニュース", "url": "https://www3.nhk.or.jp/rss/news/cat0.xml"}
+        {"name": "Google主要", "url": "https://news.google.com/rss?hl=ja&gl=JP&ceid=JP:ja"}
     ],
     "🌍 世界の動き(海外一流紙)": [
-        {"name": "BBCニュース (英国)", "url": "https://www.bbc.com/japanese/index.xml"},
-        {"name": "ロイター (国際通信)", "url": "https://jp.reuters.com/arc/outboundfeeds/rss/category/world/?outputType=xml"}
+        {"name": "BBCニュース", "url": "https://www.bbc.com/japanese/index.xml"},
+        {"name": "ロイター通信", "url": "https://jp.reuters.com/arc/outboundfeeds/rss/category/world/?outputType=xml"}
     ],
     "🤖 AI・最先端テック": [
-        {"name": "Google IT・科学", "url": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=ja&gl=JP&ceid=JP:ja"},
-        {"name": "ギズモード・ジャパン", "url": "https://www.gizmodo.jp/index.xml"},
-        {"name": "WIRED (日本版)", "url": "https://wired.jp/rss/"}
+        {"name": "Google IT科学", "url": "https://news.google.com/rss/headlines/section/topic/TECHNOLOGY?hl=ja&gl=JP&ceid=JP:ja"},
+        {"name": "ギズモード", "url": "https://www.gizmodo.jp/index.xml"},
+        {"name": "WIRED", "url": "https://wired.jp/rss/"}
     ],
     "📈 経済・ビジネス": [
-        {"name": "Google 経済・ビジネス", "url": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ja&gl=JP&ceid=JP:ja"},
-        {"name": "ロイター (ビジネス)", "url": "https://jp.reuters.com/arc/outboundfeeds/rss/category/business/?outputType=xml"}
+        {"name": "Google経済", "url": "https://news.google.com/rss/headlines/section/topic/BUSINESS?hl=ja&gl=JP&ceid=JP:ja"},
+        {"name": "ロイター経済", "url": "https://jp.reuters.com/arc/outboundfeeds/rss/category/business/?outputType=xml"}
     ]
 }
 
@@ -71,30 +69,39 @@ def fetch_and_display_category(sources, category_index):
     
     for source in sources:
         try:
-            # ★裏技：Streamlit Cloud（海外サーバー）でも弾かれないよう、Googleのプロキシを経由させてRSSを強制取得
-            encoded_url = urllib.parse.quote(source["url"], safe='')
-            proxy_url = f"https://images1-focus-opensocial.googleusercontent.com/gadgets/proxy?container=focus&refresh=600&url={encoded_url}"
+            # ★今度こその大本命対策：一般的なMacのブラウザ（Safari/Chrome）のふりをする
+            req = urllib.request.Request(
+                source["url"], 
+                headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+            )
             
-            feed = feedparser.parse(proxy_url)
+            # ブラウザのふりをしてデータをダウンロード
+            with urllib.request.urlopen(req, timeout=8) as response:
+                html_data = response.read()
+            
+            # ダウンロードしたデータを解析
+            feed = feedparser.parse(html_data)
+            
             if feed.entries:
                 for entry in feed.entries:
-                    # Googleニュース特有の「メディア名 - タイトル」から、本当のメディア名を引っこ抜く処理
                     display_title = entry.title
                     source_name = source["name"]
                     
+                    # Googleニュース特有の「メディア名 - タイトル」から、本当のメディア名を引っこ抜く
                     if " - " in display_title and "Google" in source["name"]:
                         parts = display_title.split(" - ")
-                        source_name = f"📰 {parts[-1]}" # 読売、朝日、東洋経済などの名前が入る
+                        source_name = f"📰 {parts[-1]}" # 読売、朝日、文春などの名前が入る
                         display_title = " - ".join(parts[:-1])
                     
                     entry["custom_title"] = display_title
                     entry["source_name"] = source_name
                     all_entries.append(entry)
         except Exception:
+            # 万が一1つのメディアが死んでいても、他を絶対に巻き添えにしない
             continue
                 
     if not all_entries:
-        st.warning("ニュースの取得に失敗しました。15秒ほど待ってから『更新』を押してください。")
+        st.warning("ニュースの取得に失敗しました。最下部の更新ボタンを押してみてください。")
         return
 
     unique_key = f"slider_{category_index}_{sources[0]['name'].replace(' ', '_')}"
@@ -104,7 +111,6 @@ def fetch_and_display_category(sources, category_index):
     for entry in all_entries[:max_items]:
         raw_summary = getattr(entry, 'summary', '')
         
-        # 不要なHTMLや文字列の掃除
         if '<' in raw_summary:
             raw_summary = raw_summary.split('<')[0]
         raw_summary = raw_summary.split('（')[0].strip()
